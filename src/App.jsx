@@ -1,5 +1,3 @@
-// src/App.jsx
-
 import { useEffect, useState } from "react";
 
 // ───────────────── BACKEND URL ─────────────────
@@ -7,18 +5,16 @@ const BASE_URL =
   "https://hospital-management-system-2lbo.onrender.com";
 
 function App() {
-  // ───────────────── PATIENT FORM ─────────────────
+  // ───────────────── STATES ─────────────────
+  const [appointments, setAppointments] = useState([]);
+
+  const [appointmentId, setAppointmentId] = useState("");
   const [patientId, setPatientId] = useState("");
   const [patientName, setPatientName] = useState("");
   const [diagnosis, setDiagnosis] = useState("");
   const [fee, setFee] = useState("");
-  const [hours, setHours] = useState("");
 
-  // ───────────────── OUTPUT ─────────────────
   const [output, setOutput] = useState("");
-
-  // ───────────────── APPOINTMENTS ─────────────────
-  const [appointments, setAppointments] = useState([]);
 
   // ───────────────── DOCTORS ─────────────────
   const doctors = [
@@ -58,13 +54,15 @@ function App() {
   // ───────────────── FETCH APPOINTMENTS ─────────────────
   const fetchAppointments = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/appointments`);
+      const res = await fetch(
+        `${BASE_URL}/appointments`
+      );
 
       const data = await res.json();
 
       setAppointments(data);
     } catch {
-      setOutput("❌ Failed to fetch appointments");
+      setOutput("❌ Failed to load appointments");
     }
   };
 
@@ -75,6 +73,7 @@ function App() {
   // ───────────────── BOOK APPOINTMENT ─────────────────
   const bookAppointment = async () => {
     if (
+      !appointmentId ||
       !patientId ||
       !patientName ||
       !diagnosis ||
@@ -85,27 +84,49 @@ function App() {
     }
 
     try {
-      await fetch(`${BASE_URL}/addPatient`, {
-        method: "POST",
+      const payload = {
+        appointmentId: Number(appointmentId),
 
-        headers: {
-          "Content-Type": "application/json",
-        },
+        patientId: patientId,
 
-        body: JSON.stringify({
-          id: patientId,
-          name: patientName,
-          diagnosis,
-          fee: Number(fee),
+        patientName: patientName,
 
-          doctorId: selectedDoctor.id,
-          doctorName: selectedDoctor.name,
-          specialization:
-            selectedDoctor.specialization,
-        }),
-      });
+        doctorId: selectedDoctor.id,
 
-      setOutput("✅ Appointment booked successfully");
+        doctorName: selectedDoctor.name,
+
+        specialization:
+          selectedDoctor.specialization,
+
+        slotNumber:
+          appointments.length + 1,
+
+        diagnosis: diagnosis,
+
+        fee: Number(fee),
+      };
+
+      const res = await fetch(
+        `${BASE_URL}/appointments`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error();
+      }
+
+      setOutput(
+        "✅ Appointment booked successfully"
+      );
 
       clearFields();
 
@@ -117,19 +138,21 @@ function App() {
 
   // ───────────────── DISCHARGE ─────────────────
   const dischargePatient = async (id) => {
-    if (!hours) {
-      setOutput("⚠️ Enter hours stayed");
-      return;
-    }
-
     try {
       const res = await fetch(
-        `${BASE_URL}/discharge?patientId=${id}&hours=${hours}`
+        `${BASE_URL}/appointments/${id}`,
+        {
+          method: "DELETE",
+        }
       );
 
-      const text = await res.text();
+      if (!res.ok) {
+        throw new Error();
+      }
 
-      setOutput(text);
+      setOutput(
+        "✅ Patient discharged successfully"
+      );
 
       fetchAppointments();
     } catch {
@@ -138,31 +161,34 @@ function App() {
   };
 
   // ───────────────── PRESCRIPTION ─────────────────
-  const prescribe = (name) => {
-    const med = prompt("Enter medicine");
+  const prescribe = (patient) => {
+    const med = prompt(
+      "Enter medicine name"
+    );
 
     if (!med) return;
 
     setOutput(`
 💊 PRESCRIPTION
 
-Patient: ${name}
+Patient: ${patient.patientName}
 
-Doctor: ${selectedDoctor.name}
+Doctor: ${patient.doctorName}
 
-Specialization: ${selectedDoctor.specialization}
+Specialization: ${patient.specialization}
 
 Medicine: ${med}
 
 Instructions:
-- Take medicines after meals
-- Drink plenty of water
-- Follow up after 3 days
+• Take after meals
+• Drink enough water
+• Follow-up after 3 days
 `);
   };
 
   // ───────────────── CLEAR ─────────────────
   const clearFields = () => {
+    setAppointmentId("");
     setPatientId("");
     setPatientName("");
     setDiagnosis("");
@@ -178,42 +204,37 @@ Instructions:
 
   return (
     <div style={styles.page}>
-      {/* ───────── HEADER ───────── */}
-      <header style={styles.header}>
-        <div>
-          <h1 style={styles.heading}>
-            🏥 Aetherius Hospital
-          </h1>
+      {/* HEADER */}
+      <div style={styles.header}>
+        <h1 style={styles.heading}>
+          🏥 Aetherius Hospital
+        </h1>
 
-          <p style={styles.subheading}>
-            Smart Hospital Management System
-          </p>
-        </div>
-      </header>
+        <p style={styles.subheading}>
+          Smart Hospital Management System
+        </p>
+      </div>
 
-      {/* ───────── STATS ───────── */}
-      <div style={styles.statsContainer}>
+      {/* STATS */}
+      <div style={styles.stats}>
         <div style={styles.statCard}>
           <h3>Total Appointments</h3>
-
           <p>{appointments.length}</p>
         </div>
 
         <div style={styles.statCard}>
           <h3>Available Slots</h3>
-
           <p>{20 - appointments.length}</p>
         </div>
 
         <div style={styles.statCard}>
           <h3>Total Revenue</h3>
-
           <p>₹{totalRevenue}</p>
         </div>
       </div>
 
-      {/* ───────── BOOK APPOINTMENT ───────── */}
-      <section style={styles.card}>
+      {/* BOOK APPOINTMENT */}
+      <div style={styles.card}>
         <h2 style={styles.sectionTitle}>
           📋 Book Appointment
         </h2>
@@ -221,10 +242,23 @@ Instructions:
         <div style={styles.grid}>
           <input
             style={styles.input}
+            placeholder="Appointment ID"
+            value={appointmentId}
+            onChange={(e) =>
+              setAppointmentId(
+                e.target.value
+              )
+            }
+          />
+
+          <input
+            style={styles.input}
             placeholder="Patient ID"
             value={patientId}
             onChange={(e) =>
-              setPatientId(e.target.value)
+              setPatientId(
+                e.target.value
+              )
             }
           />
 
@@ -233,7 +267,9 @@ Instructions:
             placeholder="Patient Name"
             value={patientName}
             onChange={(e) =>
-              setPatientName(e.target.value)
+              setPatientName(
+                e.target.value
+              )
             }
           />
 
@@ -242,7 +278,9 @@ Instructions:
             placeholder="Diagnosis"
             value={diagnosis}
             onChange={(e) =>
-              setDiagnosis(e.target.value)
+              setDiagnosis(
+                e.target.value
+              )
             }
           />
 
@@ -256,12 +294,13 @@ Instructions:
             }
           />
 
-          {/* ───────── DOCTOR SELECT ───────── */}
           <select
             style={styles.input}
             value={doctorId}
             onChange={(e) =>
-              setDoctorId(e.target.value)
+              setDoctorId(
+                e.target.value
+              )
             }
           >
             {doctors.map((doc) => (
@@ -276,13 +315,16 @@ Instructions:
           </select>
         </div>
 
-        {/* ───────── DOCTOR PREVIEW ───────── */}
         <div style={styles.doctorPreview}>
           🩺 Selected Doctor:{" "}
           <strong>
-            {selectedDoctor.name} (
-            {selectedDoctor.specialization})
-          </strong>
+            {selectedDoctor.name}
+          </strong>{" "}
+          (
+          {
+            selectedDoctor.specialization
+          }
+          )
         </div>
 
         <div style={styles.buttonGroup}>
@@ -300,41 +342,21 @@ Instructions:
             Clear
           </button>
         </div>
-      </section>
+      </div>
 
-      {/* ───────── DISCHARGE ───────── */}
-      <section style={styles.card}>
-        <h2 style={styles.sectionTitle}>
-          🚪 Discharge Patient
-        </h2>
-
-        <input
-          style={styles.input}
-          placeholder="Hours Stayed"
-          type="number"
-          value={hours}
-          onChange={(e) =>
-            setHours(e.target.value)
-          }
-        />
-
-        <p style={styles.helperText}>
-          Select patient from appointments
-          table below
-        </p>
-      </section>
-
-      {/* ───────── APPOINTMENTS TABLE ───────── */}
-      <section style={styles.card}>
+      {/* APPOINTMENTS TABLE */}
+      <div style={styles.card}>
         <h2 style={styles.sectionTitle}>
           📅 Appointments
         </h2>
 
-        <div style={{ overflowX: "auto" }}>
+        <div
+          style={{ overflowX: "auto" }}
+        >
           <table style={styles.table}>
             <thead>
               <tr>
-                <th>ID</th>
+                <th>Appointment</th>
                 <th>Patient</th>
                 <th>Doctor</th>
                 <th>Specialization</th>
@@ -345,61 +367,82 @@ Instructions:
             </thead>
 
             <tbody>
-              {appointments.map((a, i) => (
-                <tr key={i}>
-                  <td>{a.id}</td>
-
-                  <td>{a.name}</td>
-
-                  <td>
-                    {a.doctorName || "N/A"}
-                  </td>
-
-                  <td>
-                    {a.specialization ||
-                      "N/A"}
-                  </td>
-
-                  <td>{a.diagnosis}</td>
-
-                  <td>₹{a.fee}</td>
-
-                  <td>
-                    <button
-                      style={styles.btnBlue}
-                      onClick={() =>
-                        dischargePatient(a.id)
+              {appointments.map(
+                (a, i) => (
+                  <tr key={i}>
+                    <td>
+                      {
+                        a.appointmentId
                       }
-                    >
-                      Discharge
-                    </button>
+                    </td>
 
-                    <button
-                      style={styles.btnPurple}
-                      onClick={() =>
-                        prescribe(a.name)
+                    <td>
+                      {
+                        a.patientName
                       }
-                    >
-                      Prescribe
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+
+                    <td>
+                      {a.doctorName}
+                    </td>
+
+                    <td>
+                      {
+                        a.specialization
+                      }
+                    </td>
+
+                    <td>
+                      {a.diagnosis}
+                    </td>
+
+                    <td>
+                      ₹{a.fee}
+                    </td>
+
+                    <td>
+                      <button
+                        style={
+                          styles.btnBlue
+                        }
+                        onClick={() =>
+                          dischargePatient(
+                            a.appointmentId
+                          )
+                        }
+                      >
+                        Discharge
+                      </button>
+
+                      <button
+                        style={
+                          styles.btnPurple
+                        }
+                        onClick={() =>
+                          prescribe(
+                            a
+                          )
+                        }
+                      >
+                        Prescribe
+                      </button>
+                    </td>
+                  </tr>
+                )
+              )}
             </tbody>
           </table>
         </div>
-      </section>
+      </div>
 
-      {/* ───────── OUTPUT ───────── */}
-      <section style={styles.output}>
-        <h3 style={{ marginTop: 0 }}>
-          🖥 System Output
-        </h3>
+      {/* OUTPUT */}
+      <div style={styles.output}>
+        <h3>🖥 System Output</h3>
 
         <pre style={styles.pre}>
           {output}
         </pre>
-      </section>
+      </div>
     </div>
   );
 }
@@ -408,64 +451,61 @@ Instructions:
 const styles = {
   page: {
     minHeight: "100vh",
-    background: "#f8fafc",
+    background: "#f1f5f9",
     padding: 30,
-    fontFamily: "'Segoe UI', sans-serif",
-    color: "#1e293b",
+    fontFamily: "Segoe UI",
+    color: "#0f172a",
   },
 
   header: {
+    textAlign: "center",
     marginBottom: 30,
   },
 
   heading: {
     margin: 0,
-    fontSize: 34,
-    color: "#0f172a",
+    fontSize: 38,
   },
 
   subheading: {
     color: "#64748b",
-    marginTop: 6,
   },
 
-  statsContainer: {
+  stats: {
     display: "grid",
     gridTemplateColumns:
       "repeat(auto-fit,minmax(220px,1fr))",
     gap: 20,
-    marginBottom: 30,
+    marginBottom: 25,
   },
 
   statCard: {
     background: "white",
     borderRadius: 16,
-    padding: 22,
-    border: "1px solid #e2e8f0",
+    padding: 25,
+    textAlign: "center",
     boxShadow:
-      "0 2px 8px rgba(0,0,0,0.05)",
+      "0 2px 10px rgba(0,0,0,0.05)",
   },
 
   card: {
     background: "white",
+    padding: 25,
     borderRadius: 16,
-    padding: 24,
     marginBottom: 25,
-    border: "1px solid #e2e8f0",
     boxShadow:
-      "0 2px 8px rgba(0,0,0,0.05)",
+      "0 2px 10px rgba(0,0,0,0.05)",
   },
 
   sectionTitle: {
-    marginTop: 0,
     marginBottom: 20,
-    color: "#0f172a",
+    textAlign: "center",
   },
 
   grid: {
     display: "grid",
     gridTemplateColumns:
-      "repeat(auto-fit,minmax(250px,1fr))",
+      "repeat(auto-fit,minmax(240px,1fr))",
     gap: 15,
     marginBottom: 20,
   },
@@ -478,10 +518,17 @@ const styles = {
     outline: "none",
   },
 
+  doctorPreview: {
+    background: "#dbeafe",
+    color: "#1d4ed8",
+    padding: 14,
+    borderRadius: 10,
+    marginBottom: 15,
+  },
+
   buttonGroup: {
     display: "flex",
     gap: 10,
-    marginTop: 15,
   },
 
   btnPrimary: {
@@ -510,8 +557,8 @@ const styles = {
     border: "none",
     padding: "8px 12px",
     borderRadius: 8,
-    cursor: "pointer",
     marginRight: 8,
+    cursor: "pointer",
   },
 
   btnPurple: {
@@ -528,29 +575,15 @@ const styles = {
     borderCollapse: "collapse",
   },
 
-  helperText: {
-    color: "#64748b",
-    marginTop: 10,
-  },
-
   output: {
     background: "#0f172a",
-    color: "#e2e8f0",
-    borderRadius: 16,
+    color: "white",
     padding: 20,
+    borderRadius: 16,
   },
 
   pre: {
     whiteSpace: "pre-wrap",
-    margin: 0,
-  },
-
-  doctorPreview: {
-    background: "#eff6ff",
-    border: "1px solid #bfdbfe",
-    padding: 14,
-    borderRadius: 12,
-    color: "#1d4ed8",
   },
 };
 
