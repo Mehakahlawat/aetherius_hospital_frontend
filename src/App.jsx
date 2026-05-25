@@ -1,403 +1,557 @@
 // src/App.jsx
 
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useState } from "react";
 
-const BASE = "https://hospital-management-system-2lbo.onrender.com";
+// ───────────────── BACKEND URL ─────────────────
+const BASE_URL =
+  "https://hospital-management-system-2lbo.onrender.com";
 
-// ───────────────── API ─────────────────
-const api = {
-  get: (path) => fetch(`${BASE}${path}`).then((r) => r.json()),
+function App() {
+  // ───────────────── PATIENT FORM ─────────────────
+  const [patientId, setPatientId] = useState("");
+  const [patientName, setPatientName] = useState("");
+  const [diagnosis, setDiagnosis] = useState("");
+  const [fee, setFee] = useState("");
+  const [hours, setHours] = useState("");
 
-  post: (path, body) =>
-    fetch(`${BASE}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }).then((r) => r.text()),
+  // ───────────────── OUTPUT ─────────────────
+  const [output, setOutput] = useState("");
 
-  put: (path, body) =>
-    fetch(`${BASE}${path}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }).then((r) => r.text()),
+  // ───────────────── APPOINTMENTS ─────────────────
+  const [appointments, setAppointments] = useState([]);
 
-  del: (path) =>
-    fetch(`${BASE}${path}`, {
-      method: "DELETE",
-    }).then((r) => r.text()),
-};
+  // ───────────────── DOCTORS ─────────────────
+  const doctors = [
+    {
+      id: "D01",
+      name: "Dr. Sharma",
+      specialization: "Cardiology",
+    },
+    {
+      id: "D02",
+      name: "Dr. Mehta",
+      specialization: "Neurology",
+    },
+    {
+      id: "D03",
+      name: "Dr. Verma",
+      specialization: "Orthopedics",
+    },
+    {
+      id: "D04",
+      name: "Dr. Kapoor",
+      specialization: "Dermatology",
+    },
+    {
+      id: "D05",
+      name: "Dr. Iyer",
+      specialization: "Pediatrics",
+    },
+  ];
 
-// ───────────────── COLORS ─────────────────
-const COLORS = {
-  primary: "#2563eb",
-  secondary: "#0ea5e9",
-  success: "#059669",
-  successLight: "#d1fae5",
-  blueLight: "#dbeafe",
-  offWhite: "#f8fafc",
-  border: "#e2e8f0",
-  text: "#1e293b",
-  muted: "#64748b",
-  sidebar: "#0f172a",
-  white: "#ffffff",
-  danger: "#dc2626",
-};
+  const [doctorId, setDoctorId] = useState("D01");
 
-// ───────────────── STYLES ─────────────────
-const inputStyle = {
-  width: "100%",
-  padding: "10px 14px",
-  borderRadius: 10,
-  border: `1px solid ${COLORS.border}`,
-  fontSize: 14,
-  color: COLORS.text,
-  background: COLORS.offWhite,
-  outline: "none",
-  boxSizing: "border-box",
-};
+  const selectedDoctor = doctors.find(
+    (d) => d.id === doctorId
+  );
 
-const btnPrimary = {
-  background: COLORS.primary,
-  color: "#fff",
-  border: "none",
-  padding: "10px 18px",
-  borderRadius: 10,
-  fontWeight: 600,
-  cursor: "pointer",
-};
+  // ───────────────── FETCH APPOINTMENTS ─────────────────
+  const fetchAppointments = async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/appointments`);
 
-const btnSecondary = {
-  background: COLORS.blueLight,
-  color: COLORS.primary,
-  border: `1px solid ${COLORS.border}`,
-  padding: "10px 18px",
-  borderRadius: 10,
-  fontWeight: 600,
-  cursor: "pointer",
-};
+      const data = await res.json();
 
-const btnDanger = {
-  background: COLORS.danger,
-  color: "#fff",
-  border: "none",
-  padding: "10px 18px",
-  borderRadius: 10,
-  fontWeight: 600,
-  cursor: "pointer",
-};
-
-// ───────────────── TOAST ─────────────────
-function Toast({ msg, type, onClose }) {
-  useEffect(() => {
-    const t = setTimeout(onClose, 3000);
-    return () => clearTimeout(t);
-  }, [onClose]);
-
-  const colorMap = {
-    success: COLORS.success,
-    error: COLORS.danger,
-    info: COLORS.primary,
+      setAppointments(data);
+    } catch {
+      setOutput("❌ Failed to fetch appointments");
+    }
   };
 
-  return (
-    <div
-      style={{
-        position: "fixed",
-        bottom: 20,
-        right: 20,
-        background: COLORS.white,
-        borderLeft: `5px solid ${colorMap[type]}`,
-        padding: "14px 18px",
-        borderRadius: 10,
-        boxShadow: "0 4px 14px rgba(0,0,0,0.1)",
-        zIndex: 999,
-      }}
-    >
-      <p style={{ margin: 0, color: COLORS.text }}>{msg}</p>
-    </div>
-  );
-}
-
-// ───────────────── LOADING ─────────────────
-function LoadingSpinner() {
-  return (
-    <div style={{ padding: 40, textAlign: "center" }}>
-      <div
-        style={{
-          width: 36,
-          height: 36,
-          border: `4px solid ${COLORS.border}`,
-          borderTop: `4px solid ${COLORS.primary}`,
-          borderRadius: "50%",
-          margin: "auto",
-          animation: "spin 1s linear infinite",
-        }}
-      />
-
-      <style>{`
-        @keyframes spin {
-          to {
-            transform: rotate(360deg);
-          }
-        }
-      `}</style>
-    </div>
-  );
-}
-
-// ───────────────── DASHBOARD ─────────────────
-function Dashboard({ toast }) {
-  const [stats, setStats] = useState({
-    doctors: 0,
-    patients: 0,
-    appointments: 0,
-    revenue: 0,
-  });
-
-  const [loading, setLoading] = useState(true);
-
   useEffect(() => {
-    const load = async () => {
-      try {
-        const [docs, pats, appts] = await Promise.all([
-          api.get("/doctors"),
-          api.get("/patients"),
-          api.get("/appointments"),
-        ]);
-
-        setStats({
-          doctors: docs.length,
-          patients: pats.length,
-          appointments: appts.length,
-          revenue: pats.reduce((sum, p) => sum + (p.fee || 0), 0),
-        });
-      } catch {
-        toast("Failed to load dashboard", "error");
-      }
-
-      setLoading(false);
-    };
-
-    load();
-  }, [toast]);
-
-  const cards = [
-    {
-      title: "Doctors",
-      value: stats.doctors,
-      icon: "🩺",
-      color: COLORS.primary,
-      bg: COLORS.blueLight,
-    },
-    {
-      title: "Patients",
-      value: stats.patients,
-      icon: "🏥",
-      color: COLORS.success,
-      bg: COLORS.successLight,
-    },
-    {
-      title: "Appointments",
-      value: stats.appointments,
-      icon: "📋",
-      color: COLORS.secondary,
-      bg: "#e0f2fe",
-    },
-    {
-      title: "Revenue",
-      value: `₹${stats.revenue}`,
-      icon: "💰",
-      color: COLORS.success,
-      bg: "#dcfce7",
-    },
-  ];
-
-  return (
-    <div>
-      <h1
-        style={{
-          color: COLORS.text,
-          marginBottom: 10,
-        }}
-      >
-        Hospital Dashboard
-      </h1>
-
-      <p
-        style={{
-          color: COLORS.muted,
-          marginBottom: 30,
-        }}
-      >
-        Manage doctors, patients, and appointments.
-      </p>
-
-      {loading ? (
-        <LoadingSpinner />
-      ) : (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
-            gap: 20,
-          }}
-        >
-          {cards.map((card) => (
-            <div
-              key={card.title}
-              style={{
-                background: COLORS.white,
-                border: `1px solid ${COLORS.border}`,
-                borderRadius: 18,
-                padding: 24,
-                boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-              }}
-            >
-              <div
-                style={{
-                  width: 55,
-                  height: 55,
-                  borderRadius: 14,
-                  background: card.bg,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 26,
-                  marginBottom: 14,
-                }}
-              >
-                {card.icon}
-              </div>
-
-              <p
-                style={{
-                  color: COLORS.muted,
-                  marginBottom: 6,
-                  fontSize: 14,
-                }}
-              >
-                {card.title}
-              </p>
-
-              <h2
-                style={{
-                  margin: 0,
-                  color: card.color,
-                  fontSize: 30,
-                }}
-              >
-                {card.value}
-              </h2>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ───────────────── APP ─────────────────
-export default function App() {
-  const [tab, setTab] = useState("dashboard");
-  const [toastMsg, setToastMsg] = useState(null);
-
-  const toast = useCallback((msg, type = "info") => {
-    setToastMsg({
-      msg,
-      type,
-      key: Date.now(),
-    });
+    fetchAppointments();
   }, []);
 
-  const tabs = [
-    { id: "dashboard", label: "Dashboard", icon: "🏠" },
-    { id: "doctors", label: "Doctors", icon: "🩺" },
-    { id: "patients", label: "Patients", icon: "🏥" },
-    { id: "appointments", label: "Appointments", icon: "📋" },
-  ];
+  // ───────────────── BOOK APPOINTMENT ─────────────────
+  const bookAppointment = async () => {
+    if (
+      !patientId ||
+      !patientName ||
+      !diagnosis ||
+      !fee
+    ) {
+      setOutput("⚠️ Please fill all fields");
+      return;
+    }
+
+    try {
+      await fetch(`${BASE_URL}/addPatient`, {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+          id: patientId,
+          name: patientName,
+          diagnosis,
+          fee: Number(fee),
+
+          doctorId: selectedDoctor.id,
+          doctorName: selectedDoctor.name,
+          specialization:
+            selectedDoctor.specialization,
+        }),
+      });
+
+      setOutput("✅ Appointment booked successfully");
+
+      clearFields();
+
+      fetchAppointments();
+    } catch {
+      setOutput("❌ Booking failed");
+    }
+  };
+
+  // ───────────────── DISCHARGE ─────────────────
+  const dischargePatient = async (id) => {
+    if (!hours) {
+      setOutput("⚠️ Enter hours stayed");
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `${BASE_URL}/discharge?patientId=${id}&hours=${hours}`
+      );
+
+      const text = await res.text();
+
+      setOutput(text);
+
+      fetchAppointments();
+    } catch {
+      setOutput("❌ Discharge failed");
+    }
+  };
+
+  // ───────────────── PRESCRIPTION ─────────────────
+  const prescribe = (name) => {
+    const med = prompt("Enter medicine");
+
+    if (!med) return;
+
+    setOutput(`
+💊 PRESCRIPTION
+
+Patient: ${name}
+
+Doctor: ${selectedDoctor.name}
+
+Specialization: ${selectedDoctor.specialization}
+
+Medicine: ${med}
+
+Instructions:
+- Take medicines after meals
+- Drink plenty of water
+- Follow up after 3 days
+`);
+  };
+
+  // ───────────────── CLEAR ─────────────────
+  const clearFields = () => {
+    setPatientId("");
+    setPatientName("");
+    setDiagnosis("");
+    setFee("");
+    setDoctorId("D01");
+  };
+
+  // ───────────────── TOTAL REVENUE ─────────────────
+  const totalRevenue = appointments.reduce(
+    (sum, a) => sum + (a.fee || 0),
+    0
+  );
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: COLORS.offWhite,
-        fontFamily: "'Segoe UI', sans-serif",
-      }}
-    >
-      {/* Sidebar */}
-      <aside
-        style={{
-          position: "fixed",
-          left: 0,
-          top: 0,
-          bottom: 0,
-          width: 240,
-          background: COLORS.sidebar,
-          padding: 20,
-        }}
-      >
-        <h2
-          style={{
-            color: "#fff",
-            marginBottom: 30,
-          }}
-        >
-          🏨 MediCare HMS
+    <div style={styles.page}>
+      {/* ───────── HEADER ───────── */}
+      <header style={styles.header}>
+        <div>
+          <h1 style={styles.heading}>
+            🏥 Aetherius Hospital
+          </h1>
+
+          <p style={styles.subheading}>
+            Smart Hospital Management System
+          </p>
+        </div>
+      </header>
+
+      {/* ───────── STATS ───────── */}
+      <div style={styles.statsContainer}>
+        <div style={styles.statCard}>
+          <h3>Total Appointments</h3>
+
+          <p>{appointments.length}</p>
+        </div>
+
+        <div style={styles.statCard}>
+          <h3>Available Slots</h3>
+
+          <p>{20 - appointments.length}</p>
+        </div>
+
+        <div style={styles.statCard}>
+          <h3>Total Revenue</h3>
+
+          <p>₹{totalRevenue}</p>
+        </div>
+      </div>
+
+      {/* ───────── BOOK APPOINTMENT ───────── */}
+      <section style={styles.card}>
+        <h2 style={styles.sectionTitle}>
+          📋 Book Appointment
         </h2>
 
-        {tabs.map((tabItem) => (
-          <button
-            key={tabItem.id}
-            onClick={() => setTab(tabItem.id)}
-            style={{
-              width: "100%",
-              padding: "12px 16px",
-              marginBottom: 10,
-              borderRadius: 12,
-              border: "none",
-              background:
-                tab === tabItem.id
-                  ? COLORS.primary
-                  : "transparent",
-              color:
-                tab === tabItem.id
-                  ? "#fff"
-                  : "#cbd5e1",
-              textAlign: "left",
-              fontWeight: 600,
-              cursor: "pointer",
-              fontSize: 15,
-            }}
+        <div style={styles.grid}>
+          <input
+            style={styles.input}
+            placeholder="Patient ID"
+            value={patientId}
+            onChange={(e) =>
+              setPatientId(e.target.value)
+            }
+          />
+
+          <input
+            style={styles.input}
+            placeholder="Patient Name"
+            value={patientName}
+            onChange={(e) =>
+              setPatientName(e.target.value)
+            }
+          />
+
+          <input
+            style={styles.input}
+            placeholder="Diagnosis"
+            value={diagnosis}
+            onChange={(e) =>
+              setDiagnosis(e.target.value)
+            }
+          />
+
+          <input
+            style={styles.input}
+            type="number"
+            placeholder="Consultation Fee"
+            value={fee}
+            onChange={(e) =>
+              setFee(e.target.value)
+            }
+          />
+
+          {/* ───────── DOCTOR SELECT ───────── */}
+          <select
+            style={styles.input}
+            value={doctorId}
+            onChange={(e) =>
+              setDoctorId(e.target.value)
+            }
           >
-            {tabItem.icon} {tabItem.label}
+            {doctors.map((doc) => (
+              <option
+                key={doc.id}
+                value={doc.id}
+              >
+                {doc.name} —{" "}
+                {doc.specialization}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* ───────── DOCTOR PREVIEW ───────── */}
+        <div style={styles.doctorPreview}>
+          🩺 Selected Doctor:{" "}
+          <strong>
+            {selectedDoctor.name} (
+            {selectedDoctor.specialization})
+          </strong>
+        </div>
+
+        <div style={styles.buttonGroup}>
+          <button
+            style={styles.btnPrimary}
+            onClick={bookAppointment}
+          >
+            Book Appointment
           </button>
-        ))}
-      </aside>
 
-      {/* Main */}
-      <main
-        style={{
-          marginLeft: 240,
-          padding: 35,
-        }}
-      >
-        {tab === "dashboard" && <Dashboard toast={toast} />}
+          <button
+            style={styles.btnDanger}
+            onClick={clearFields}
+          >
+            Clear
+          </button>
+        </div>
+      </section>
 
-        {/* Add DoctorsPanel */}
-        {/* Add PatientsPanel */}
-        {/* Add AppointmentsPanel */}
-      </main>
+      {/* ───────── DISCHARGE ───────── */}
+      <section style={styles.card}>
+        <h2 style={styles.sectionTitle}>
+          🚪 Discharge Patient
+        </h2>
 
-      {toastMsg && (
-        <Toast
-          key={toastMsg.key}
-          msg={toastMsg.msg}
-          type={toastMsg.type}
-          onClose={() => setToastMsg(null)}
+        <input
+          style={styles.input}
+          placeholder="Hours Stayed"
+          type="number"
+          value={hours}
+          onChange={(e) =>
+            setHours(e.target.value)
+          }
         />
-      )}
+
+        <p style={styles.helperText}>
+          Select patient from appointments
+          table below
+        </p>
+      </section>
+
+      {/* ───────── APPOINTMENTS TABLE ───────── */}
+      <section style={styles.card}>
+        <h2 style={styles.sectionTitle}>
+          📅 Appointments
+        </h2>
+
+        <div style={{ overflowX: "auto" }}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Patient</th>
+                <th>Doctor</th>
+                <th>Specialization</th>
+                <th>Diagnosis</th>
+                <th>Fee</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {appointments.map((a, i) => (
+                <tr key={i}>
+                  <td>{a.id}</td>
+
+                  <td>{a.name}</td>
+
+                  <td>
+                    {a.doctorName || "N/A"}
+                  </td>
+
+                  <td>
+                    {a.specialization ||
+                      "N/A"}
+                  </td>
+
+                  <td>{a.diagnosis}</td>
+
+                  <td>₹{a.fee}</td>
+
+                  <td>
+                    <button
+                      style={styles.btnBlue}
+                      onClick={() =>
+                        dischargePatient(a.id)
+                      }
+                    >
+                      Discharge
+                    </button>
+
+                    <button
+                      style={styles.btnPurple}
+                      onClick={() =>
+                        prescribe(a.name)
+                      }
+                    >
+                      Prescribe
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* ───────── OUTPUT ───────── */}
+      <section style={styles.output}>
+        <h3 style={{ marginTop: 0 }}>
+          🖥 System Output
+        </h3>
+
+        <pre style={styles.pre}>
+          {output}
+        </pre>
+      </section>
     </div>
   );
 }
 
+// ───────────────── STYLES ─────────────────
+const styles = {
+  page: {
+    minHeight: "100vh",
+    background: "#f8fafc",
+    padding: 30,
+    fontFamily: "'Segoe UI', sans-serif",
+    color: "#1e293b",
+  },
+
+  header: {
+    marginBottom: 30,
+  },
+
+  heading: {
+    margin: 0,
+    fontSize: 34,
+    color: "#0f172a",
+  },
+
+  subheading: {
+    color: "#64748b",
+    marginTop: 6,
+  },
+
+  statsContainer: {
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(auto-fit,minmax(220px,1fr))",
+    gap: 20,
+    marginBottom: 30,
+  },
+
+  statCard: {
+    background: "white",
+    borderRadius: 16,
+    padding: 22,
+    border: "1px solid #e2e8f0",
+    boxShadow:
+      "0 2px 8px rgba(0,0,0,0.05)",
+  },
+
+  card: {
+    background: "white",
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 25,
+    border: "1px solid #e2e8f0",
+    boxShadow:
+      "0 2px 8px rgba(0,0,0,0.05)",
+  },
+
+  sectionTitle: {
+    marginTop: 0,
+    marginBottom: 20,
+    color: "#0f172a",
+  },
+
+  grid: {
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(auto-fit,minmax(250px,1fr))",
+    gap: 15,
+    marginBottom: 20,
+  },
+
+  input: {
+    padding: 12,
+    borderRadius: 10,
+    border: "1px solid #cbd5e1",
+    fontSize: 14,
+    outline: "none",
+  },
+
+  buttonGroup: {
+    display: "flex",
+    gap: 10,
+    marginTop: 15,
+  },
+
+  btnPrimary: {
+    background: "#2563eb",
+    color: "white",
+    border: "none",
+    padding: "12px 18px",
+    borderRadius: 10,
+    cursor: "pointer",
+    fontWeight: "600",
+  },
+
+  btnDanger: {
+    background: "#dc2626",
+    color: "white",
+    border: "none",
+    padding: "12px 18px",
+    borderRadius: 10,
+    cursor: "pointer",
+    fontWeight: "600",
+  },
+
+  btnBlue: {
+    background: "#0ea5e9",
+    color: "white",
+    border: "none",
+    padding: "8px 12px",
+    borderRadius: 8,
+    cursor: "pointer",
+    marginRight: 8,
+  },
+
+  btnPurple: {
+    background: "#7c3aed",
+    color: "white",
+    border: "none",
+    padding: "8px 12px",
+    borderRadius: 8,
+    cursor: "pointer",
+  },
+
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+  },
+
+  helperText: {
+    color: "#64748b",
+    marginTop: 10,
+  },
+
+  output: {
+    background: "#0f172a",
+    color: "#e2e8f0",
+    borderRadius: 16,
+    padding: 20,
+  },
+
+  pre: {
+    whiteSpace: "pre-wrap",
+    margin: 0,
+  },
+
+  doctorPreview: {
+    background: "#eff6ff",
+    border: "1px solid #bfdbfe",
+    padding: 14,
+    borderRadius: 12,
+    color: "#1d4ed8",
+  },
+};
+
+export default App;
