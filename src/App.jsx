@@ -6,15 +6,28 @@ const BASE_URL =
 
 function App() {
   // ───────────────── STATES ─────────────────
-  const [appointments, setAppointments] = useState([]);
+  const [appointments, setAppointments] =
+    useState([]);
 
-  const [appointmentId, setAppointmentId] = useState("");
-  const [patientId, setPatientId] = useState("");
-  const [patientName, setPatientName] = useState("");
-  const [diagnosis, setDiagnosis] = useState("");
+  const [appointmentId, setAppointmentId] =
+    useState("");
+
+  const [patientId, setPatientId] =
+    useState("");
+
+  const [patientName, setPatientName] =
+    useState("");
+
+  const [diagnosis, setDiagnosis] =
+    useState("");
+
   const [fee, setFee] = useState("");
 
-  const [output, setOutput] = useState("");
+  const [doctorId, setDoctorId] =
+    useState("D01");
+
+  const [output, setOutput] =
+    useState("");
 
   // ───────────────── DOCTORS ─────────────────
   const doctors = [
@@ -23,21 +36,25 @@ function App() {
       name: "Dr. Sharma",
       specialization: "Cardiology",
     },
+
     {
       id: "D02",
       name: "Dr. Mehta",
       specialization: "Neurology",
     },
+
     {
       id: "D03",
       name: "Dr. Verma",
       specialization: "Orthopedics",
     },
+
     {
       id: "D04",
       name: "Dr. Kapoor",
       specialization: "Dermatology",
     },
+
     {
       id: "D05",
       name: "Dr. Iyer",
@@ -45,24 +62,26 @@ function App() {
     },
   ];
 
-  const [doctorId, setDoctorId] = useState("D01");
-
   const selectedDoctor = doctors.find(
-    (d) => d.id === doctorId
+    (doctor) => doctor.id === doctorId
   );
 
   // ───────────────── FETCH APPOINTMENTS ─────────────────
   const fetchAppointments = async () => {
     try {
-      const res = await fetch(
+      const response = await fetch(
         `${BASE_URL}/appointments`
       );
 
-      const data = await res.json();
+      const data = await response.json();
 
       setAppointments(data);
-    } catch {
-      setOutput("❌ Failed to load appointments");
+    } catch (error) {
+      console.log(error);
+
+      setOutput(
+        "❌ Failed to fetch appointments"
+      );
     }
   };
 
@@ -72,6 +91,8 @@ function App() {
 
   // ───────────────── BOOK APPOINTMENT ─────────────────
   const bookAppointment = async () => {
+    // VALIDATION
+
     if (
       !appointmentId ||
       !patientId ||
@@ -79,34 +100,39 @@ function App() {
       !diagnosis ||
       !fee
     ) {
-      setOutput("⚠️ Please fill all fields");
+      setOutput(
+        "⚠️ Please fill all fields"
+      );
+
       return;
     }
 
+    const payload = {
+      appointmentId:
+        Number(appointmentId),
+
+      patientId: patientId,
+
+      patientName: patientName,
+
+      doctorId: selectedDoctor.id,
+
+      doctorName:
+        selectedDoctor.name,
+
+      specialization:
+        selectedDoctor.specialization,
+
+      slotNumber:
+        appointments.length + 1,
+
+      diagnosis: diagnosis,
+
+      fee: Number(fee),
+    };
+
     try {
-      const payload = {
-        appointmentId: Number(appointmentId),
-
-        patientId: patientId,
-
-        patientName: patientName,
-
-        doctorId: selectedDoctor.id,
-
-        doctorName: selectedDoctor.name,
-
-        specialization:
-          selectedDoctor.specialization,
-
-        slotNumber:
-          appointments.length + 1,
-
-        diagnosis: diagnosis,
-
-        fee: Number(fee),
-      };
-
-      const res = await fetch(
+      const response = await fetch(
         `${BASE_URL}/appointments`,
         {
           method: "POST",
@@ -120,73 +146,158 @@ function App() {
         }
       );
 
-      if (!res.ok) {
-        throw new Error();
+      const message =
+        await response.text();
+
+      if (!response.ok) {
+        setOutput(`❌ ${message}`);
+        return;
       }
 
-      setOutput(
-        "✅ Appointment booked successfully"
-      );
+      setOutput(`
+✅ APPOINTMENT BOOKED SUCCESSFULLY
+
+Patient: ${patientName}
+
+Doctor: ${selectedDoctor.name}
+
+Specialization: ${selectedDoctor.specialization}
+
+Diagnosis: ${diagnosis}
+
+Consultation Fee: ₹${fee}
+`);
 
       clearFields();
 
       fetchAppointments();
-    } catch {
-      setOutput("❌ Booking failed");
+    } catch (error) {
+      console.log(error);
+
+      setOutput(
+        "❌ Failed to book appointment"
+      );
     }
   };
 
-  // ───────────────── DISCHARGE ─────────────────
-  const dischargePatient = async (id) => {
+  // ───────────────── DISCHARGE PATIENT ─────────────────
+  const dischargePatient = async (
+    appointment
+  ) => {
+    const hours = prompt(
+      "Enter admission hours:"
+    );
+
+    if (!hours) return;
+
+    const admittedHours =
+      Number(hours);
+
+    const roomCharges =
+      admittedHours * 500;
+
+    const consultationFee =
+      Number(appointment.fee);
+
+    const totalBill =
+      roomCharges + consultationFee;
+
+    const confirmDischarge =
+      window.confirm(`
+PATIENT BILL
+
+Patient: ${appointment.patientName}
+
+Doctor: ${appointment.doctorName}
+
+Diagnosis: ${appointment.diagnosis}
+
+Consultation Fee: ₹${consultationFee}
+
+Room Charges: ₹${roomCharges}
+
+TOTAL BILL: ₹${totalBill}
+
+Proceed with discharge?
+`);
+
+    if (!confirmDischarge) {
+      return;
+    }
+
     try {
-      const res = await fetch(
-        `${BASE_URL}/appointments/${id}`,
+      const response = await fetch(
+        `${BASE_URL}/appointments/${appointment.appointmentId}`,
         {
           method: "DELETE",
         }
       );
 
-      if (!res.ok) {
-        throw new Error();
+      const message =
+        await response.text();
+
+      if (!response.ok) {
+        setOutput(`❌ ${message}`);
+        return;
       }
 
-      setOutput(
-        "✅ Patient discharged successfully"
-      );
+      setOutput(`
+✅ PATIENT DISCHARGED SUCCESSFULLY
+
+Patient: ${appointment.patientName}
+
+Diagnosis: ${appointment.diagnosis}
+
+Admission Hours: ${admittedHours}
+
+Consultation Fee: ₹${consultationFee}
+
+Room Charges: ₹${roomCharges}
+
+TOTAL BILL: ₹${totalBill}
+`);
 
       fetchAppointments();
-    } catch {
-      setOutput("❌ Discharge failed");
+    } catch (error) {
+      console.log(error);
+
+      setOutput(
+        "❌ Failed to discharge patient"
+      );
     }
   };
 
   // ───────────────── PRESCRIPTION ─────────────────
-  const prescribe = (patient) => {
-    const med = prompt(
-      "Enter medicine name"
+  const prescribeMedicine = (
+    appointment
+  ) => {
+    const medicine = prompt(
+      "Enter medicine name:"
     );
 
-    if (!med) return;
+    if (!medicine) return;
 
     setOutput(`
 💊 PRESCRIPTION
 
-Patient: ${patient.patientName}
+Patient: ${appointment.patientName}
 
-Doctor: ${patient.doctorName}
+Doctor: ${appointment.doctorName}
 
-Specialization: ${patient.specialization}
+Specialization: ${appointment.specialization}
 
-Medicine: ${med}
+Diagnosis: ${appointment.diagnosis}
+
+Medicine: ${medicine}
 
 Instructions:
-• Take after meals
+• Take medicine after meals
 • Drink enough water
 • Follow-up after 3 days
 `);
   };
 
-  // ───────────────── CLEAR ─────────────────
+  // ───────────────── CLEAR FIELDS ─────────────────
   const clearFields = () => {
     setAppointmentId("");
     setPatientId("");
@@ -198,7 +309,9 @@ Instructions:
 
   // ───────────────── TOTAL REVENUE ─────────────────
   const totalRevenue = appointments.reduce(
-    (sum, a) => sum + (a.fee || 0),
+    (sum, appointment) =>
+      sum +
+      Number(appointment.fee || 0),
     0
   );
 
@@ -211,7 +324,8 @@ Instructions:
         </h1>
 
         <p style={styles.subheading}>
-          Smart Hospital Management System
+          Smart Hospital Management
+          System
         </p>
       </div>
 
@@ -219,16 +333,21 @@ Instructions:
       <div style={styles.stats}>
         <div style={styles.statCard}>
           <h3>Total Appointments</h3>
+
           <p>{appointments.length}</p>
         </div>
 
         <div style={styles.statCard}>
           <h3>Available Slots</h3>
-          <p>{20 - appointments.length}</p>
+
+          <p>
+            {20 - appointments.length}
+          </p>
         </div>
 
         <div style={styles.statCard}>
           <h3>Total Revenue</h3>
+
           <p>₹{totalRevenue}</p>
         </div>
       </div>
@@ -303,40 +422,42 @@ Instructions:
               )
             }
           >
-            {doctors.map((doc) => (
+            {doctors.map((doctor) => (
               <option
-                key={doc.id}
-                value={doc.id}
+                key={doctor.id}
+                value={doctor.id}
               >
-                {doc.name} —{" "}
-                {doc.specialization}
+                {doctor.name} —{" "}
+                {
+                  doctor.specialization
+                }
               </option>
             ))}
           </select>
         </div>
 
-        <div style={styles.doctorPreview}>
-          🩺 Selected Doctor:{" "}
+        <div style={styles.doctorBox}>
+          🩺 Selected Doctor:
           <strong>
+            {" "}
             {selectedDoctor.name}
-          </strong>{" "}
-          (
+          </strong>
+          {" • "}
           {
             selectedDoctor.specialization
           }
-          )
         </div>
 
         <div style={styles.buttonGroup}>
           <button
-            style={styles.btnPrimary}
+            style={styles.primaryButton}
             onClick={bookAppointment}
           >
             Book Appointment
           </button>
 
           <button
-            style={styles.btnDanger}
+            style={styles.dangerButton}
             onClick={clearFields}
           >
             Clear
@@ -356,7 +477,7 @@ Instructions:
           <table style={styles.table}>
             <thead>
               <tr>
-                <th>Appointment</th>
+                <th>ID</th>
                 <th>Patient</th>
                 <th>Doctor</th>
                 <th>Specialization</th>
@@ -368,46 +489,55 @@ Instructions:
 
             <tbody>
               {appointments.map(
-                (a, i) => (
-                  <tr key={i}>
+                (appointment) => (
+                  <tr
+                    key={
+                      appointment.appointmentId
+                    }
+                  >
                     <td>
                       {
-                        a.appointmentId
+                        appointment.appointmentId
                       }
                     </td>
 
                     <td>
                       {
-                        a.patientName
+                        appointment.patientName
                       }
-                    </td>
-
-                    <td>
-                      {a.doctorName}
                     </td>
 
                     <td>
                       {
-                        a.specialization
+                        appointment.doctorName
                       }
                     </td>
 
                     <td>
-                      {a.diagnosis}
+                      {
+                        appointment.specialization
+                      }
                     </td>
 
                     <td>
-                      ₹{a.fee}
+                      {
+                        appointment.diagnosis
+                      }
+                    </td>
+
+                    <td>
+                      ₹
+                      {appointment.fee}
                     </td>
 
                     <td>
                       <button
                         style={
-                          styles.btnBlue
+                          styles.dischargeButton
                         }
                         onClick={() =>
                           dischargePatient(
-                            a.appointmentId
+                            appointment
                           )
                         }
                       >
@@ -416,11 +546,11 @@ Instructions:
 
                       <button
                         style={
-                          styles.btnPurple
+                          styles.prescribeButton
                         }
                         onClick={() =>
-                          prescribe(
-                            a
+                          prescribeMedicine(
+                            appointment
                           )
                         }
                       >
@@ -436,7 +566,7 @@ Instructions:
       </div>
 
       {/* OUTPUT */}
-      <div style={styles.output}>
+      <div style={styles.outputBox}>
         <h3>🖥 System Output</h3>
 
         <pre style={styles.pre}>
@@ -452,122 +582,104 @@ const styles = {
   page: {
     minHeight: "100vh",
     background: "#f1f5f9",
-    padding: 30,
+    padding: "30px",
     fontFamily: "Segoe UI",
-    color: "#0f172a",
   },
 
   header: {
     textAlign: "center",
-    marginBottom: 30,
+    marginBottom: "30px",
   },
 
   heading: {
+    fontSize: "42px",
+    color: "#0f172a",
     margin: 0,
-    fontSize: 38,
   },
 
   subheading: {
     color: "#64748b",
+    marginTop: "10px",
   },
 
   stats: {
     display: "grid",
     gridTemplateColumns:
       "repeat(auto-fit,minmax(220px,1fr))",
-    gap: 20,
-    marginBottom: 25,
+    gap: "20px",
+    marginBottom: "25px",
   },
 
   statCard: {
     background: "white",
-    borderRadius: 16,
-    padding: 25,
+    padding: "25px",
+    borderRadius: "18px",
     textAlign: "center",
     boxShadow:
-      "0 2px 10px rgba(0,0,0,0.05)",
+      "0 4px 14px rgba(0,0,0,0.08)",
   },
 
   card: {
     background: "white",
-    padding: 25,
-    borderRadius: 16,
-    marginBottom: 25,
+    padding: "25px",
+    borderRadius: "18px",
+    marginBottom: "25px",
     boxShadow:
-      "0 2px 10px rgba(0,0,0,0.05)",
+      "0 4px 14px rgba(0,0,0,0.08)",
   },
 
   sectionTitle: {
-    marginBottom: 20,
     textAlign: "center",
+    marginBottom: "22px",
   },
 
   grid: {
     display: "grid",
     gridTemplateColumns:
       "repeat(auto-fit,minmax(240px,1fr))",
-    gap: 15,
-    marginBottom: 20,
+    gap: "15px",
+    marginBottom: "20px",
   },
 
   input: {
-    padding: 12,
-    borderRadius: 10,
+    padding: "12px",
+    borderRadius: "10px",
     border: "1px solid #cbd5e1",
-    fontSize: 14,
-    outline: "none",
+    fontSize: "14px",
   },
 
-  doctorPreview: {
+  doctorBox: {
     background: "#dbeafe",
     color: "#1d4ed8",
-    padding: 14,
-    borderRadius: 10,
-    marginBottom: 15,
+    padding: "14px",
+    borderRadius: "10px",
+    marginBottom: "18px",
+    textAlign: "center",
   },
 
   buttonGroup: {
     display: "flex",
-    gap: 10,
+    gap: "12px",
   },
 
-  btnPrimary: {
+  primaryButton: {
     background: "#2563eb",
     color: "white",
     border: "none",
     padding: "12px 18px",
-    borderRadius: 10,
+    borderRadius: "10px",
     cursor: "pointer",
     fontWeight: "600",
   },
 
-  btnDanger: {
+  dangerButton: {
     background: "#dc2626",
     color: "white",
     border: "none",
     padding: "12px 18px",
-    borderRadius: 10,
+    borderRadius: "10px",
     cursor: "pointer",
     fontWeight: "600",
-  },
-
-  btnBlue: {
-    background: "#0ea5e9",
-    color: "white",
-    border: "none",
-    padding: "8px 12px",
-    borderRadius: 8,
-    marginRight: 8,
-    cursor: "pointer",
-  },
-
-  btnPurple: {
-    background: "#7c3aed",
-    color: "white",
-    border: "none",
-    padding: "8px 12px",
-    borderRadius: 8,
-    cursor: "pointer",
   },
 
   table: {
@@ -575,15 +687,35 @@ const styles = {
     borderCollapse: "collapse",
   },
 
-  output: {
+  dischargeButton: {
+    background: "#0ea5e9",
+    color: "white",
+    border: "none",
+    padding: "8px 12px",
+    borderRadius: "8px",
+    marginRight: "8px",
+    cursor: "pointer",
+  },
+
+  prescribeButton: {
+    background: "#7c3aed",
+    color: "white",
+    border: "none",
+    padding: "8px 12px",
+    borderRadius: "8px",
+    cursor: "pointer",
+  },
+
+  outputBox: {
     background: "#0f172a",
     color: "white",
-    padding: 20,
-    borderRadius: 16,
+    padding: "20px",
+    borderRadius: "18px",
   },
 
   pre: {
     whiteSpace: "pre-wrap",
+    lineHeight: "1.6",
   },
 };
 
