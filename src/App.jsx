@@ -262,7 +262,7 @@ TOTAL BILL: ₹${totalBill}
       console.log(error);
 
       setOutput(
-        "❌ Failed to discharge patient"
+        "Failed to discharge patient"
       );
     }
   };
@@ -698,7 +698,7 @@ const styles = {
   },
 
   prescribeButton: {
-    background: "#1a6a393a",
+    background: "#1e54323a",
     color: "white",
     border: "none",
     padding: "8px 12px",
@@ -707,8 +707,8 @@ const styles = {
   },
 
   outputBox: {
-    background: "#c2c8d6",
-    color: "white",
+    background: "#b2b2b6",
+    color: "darkgray",
     padding: "20px",
     borderRadius: "18px",
   },
