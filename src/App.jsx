@@ -9,9 +9,6 @@ function App() {
   const [appointments, setAppointments] =
     useState([]);
 
-  const [hospitalRevenue, setHospitalRevenue] =
-    useState(0);
-
   const [appointmentId, setAppointmentId] =
     useState("");
 
@@ -79,19 +76,6 @@ function App() {
       const data = await response.json();
 
       setAppointments(data);
-
-      // CONSULTATION FEES COUNT
-      const consultationRevenue =
-        data.reduce(
-          (sum, appointment) =>
-            sum +
-            Number(appointment.fee || 0),
-          0
-        );
-
-      setHospitalRevenue(
-        consultationRevenue
-      );
     } catch (error) {
       console.log(error);
 
@@ -107,6 +91,8 @@ function App() {
 
   // ───────────────── BOOK APPOINTMENT ─────────────────
   const bookAppointment = async () => {
+    // VALIDATION
+
     if (
       !appointmentId ||
       !patientId ||
@@ -168,11 +154,6 @@ function App() {
         return;
       }
 
-      // ADD CONSULTATION FEE
-      setHospitalRevenue(
-        (prev) => prev + Number(fee)
-      );
-
       setOutput(`
 ✅ APPOINTMENT BOOKED SUCCESSFULLY
 
@@ -219,7 +200,7 @@ Consultation Fee: ₹${fee}
       Number(appointment.fee);
 
     const totalBill =
-      consultationFee + roomCharges;
+      roomCharges + consultationFee;
 
     const confirmDischarge =
       window.confirm(`
@@ -259,11 +240,6 @@ Proceed with discharge?
         setOutput(`❌ ${message}`);
         return;
       }
-
-      // ADD ROOM CHARGES TO REVENUE
-      setHospitalRevenue(
-        (prev) => prev + roomCharges
-      );
 
       setOutput(`
 ✅ PATIENT DISCHARGED SUCCESSFULLY
@@ -321,7 +297,7 @@ Instructions:
 `);
   };
 
-  // ───────────────── CLEAR ─────────────────
+  // ───────────────── CLEAR FIELDS ─────────────────
   const clearFields = () => {
     setAppointmentId("");
     setPatientId("");
@@ -330,6 +306,14 @@ Instructions:
     setFee("");
     setDoctorId("D01");
   };
+
+  // ───────────────── TOTAL REVENUE ─────────────────
+  const totalRevenue = appointments.reduce(
+    (sum, appointment) =>
+      sum +
+      Number(appointment.fee || 0),
+    0
+  );
 
   return (
     <div style={styles.page}>
@@ -364,7 +348,7 @@ Instructions:
         <div style={styles.statCard}>
           <h3>Total Revenue</h3>
 
-          <p>₹{hospitalRevenue}</p>
+          <p>₹{totalRevenue}</p>
         </div>
       </div>
 
@@ -734,6 +718,5 @@ const styles = {
     lineHeight: "1.6",
   },
 };
-
 
 export default App;
