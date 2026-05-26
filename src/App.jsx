@@ -107,7 +107,7 @@ function App() {
       console.log(error);
 
       setOutput(
-        "❌ Failed to fetch appointments"
+        " Failed to fetch appointments"
       );
     }
   };
@@ -126,7 +126,7 @@ function App() {
       !fee
     ) {
       setOutput(
-        "⚠️ Please fill all fields"
+        "Please fill all fields"
       );
 
       return;
@@ -234,12 +234,12 @@ function App() {
         await response.text();
 
       if (!response.ok) {
-        setOutput(`❌ ${message}`);
+        setOutput(` ${message}`);
         return;
       }
 
       setOutput(`
-✅ APPOINTMENT BOOKED SUCCESSFULLY
+ APPOINTMENT BOOKED SUCCESSFULLY
 
 Patient: ${patientName}
 
@@ -259,7 +259,7 @@ Consultation Fee: ₹${fee}
       console.log(error);
 
       setOutput(
-        "❌ Failed to book appointment"
+        " Failed to book appointment"
       );
     }
   };
@@ -294,7 +294,7 @@ Consultation Fee: ₹${fee}
       isNaN(roomChargePerHour)
     ) {
       setOutput(
-        "❌ Invalid input values"
+        " Invalid input values"
       );
 
       return;
@@ -352,7 +352,7 @@ Proceed with discharge?
         await response.text();
 
       if (!response.ok) {
-        setOutput(`❌ ${message}`);
+        setOutput(` ${message}`);
         return;
       }
 
@@ -374,7 +374,7 @@ Proceed with discharge?
       );
 
       setOutput(`
-✅ PATIENT DISCHARGED SUCCESSFULLY
+PATIENT DISCHARGED SUCCESSFULLY
 
 Patient: ${appointment.patientName}
 
@@ -396,7 +396,7 @@ TOTAL BILL: ₹${totalBill}
       console.log(error);
 
       setOutput(
-        "❌ Failed to discharge patient"
+        " Failed to discharge patient"
       );
     }
   };
@@ -412,7 +412,7 @@ TOTAL BILL: ₹${totalBill}
     if (!medicine) return;
 
     setOutput(`
-💊 PRESCRIPTION
+ PRESCRIPTION
 
 Patient: ${appointment.patientName}
 
@@ -446,7 +446,7 @@ Instructions:
       {/* HEADER */}
       <div style={styles.header}>
         <h1 style={styles.heading}>
-          🏥 Aetherius Hospital
+           Aetherius Hospital
         </h1>
 
         <p style={styles.subheading}>
@@ -485,7 +485,7 @@ Instructions:
       {/* BOOK APPOINTMENT */}
       <div style={styles.card}>
         <h2 style={styles.sectionTitle}>
-          📋 Book Appointment
+           Book Appointment
         </h2>
 
         <div style={styles.grid}>
@@ -598,7 +598,7 @@ Instructions:
       {/* APPOINTMENT TABLE */}
       <div style={styles.card}>
         <h2 style={styles.sectionTitle}>
-          📅 Appointments
+           Appointments
         </h2>
 
         <div
