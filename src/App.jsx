@@ -80,15 +80,29 @@ function App() {
 
       setAppointments(data);
 
-      // CONSULTATION FEES
-      const revenue = data.reduce(
-        (sum, appointment) =>
-          sum +
-          Number(appointment.fee || 0),
-        0
-      );
+      // CONSULTATION REVENUE
+      const consultationRevenue =
+        data.reduce(
+          (sum, appointment) =>
+            sum +
+            Number(
+              appointment.fee || 0
+            ),
+          0
+        );
 
-      setHospitalRevenue(revenue);
+      // ROOM REVENUE
+      const storedRoomRevenue =
+        Number(
+          localStorage.getItem(
+            "roomRevenue"
+          )
+        ) || 0;
+
+      setHospitalRevenue(
+        consultationRevenue +
+          storedRoomRevenue
+      );
     } catch (error) {
       console.log(error);
 
@@ -118,7 +132,8 @@ function App() {
       return;
     }
 
-    const payload = {
+    // APPOINTMENT PAYLOAD
+    const appointmentPayload = {
       appointmentId:
         Number(appointmentId),
 
@@ -142,7 +157,63 @@ function App() {
       fee: Number(fee),
     };
 
+    // PATIENT PAYLOAD
+    const patientPayload = {
+      id: patientId,
+
+      name: patientName,
+
+      diagnosis: diagnosis,
+
+      fee: Number(fee),
+    };
+
+    // DOCTOR PAYLOAD
+    const doctorPayload = {
+      id: selectedDoctor.id,
+
+      name: selectedDoctor.name,
+
+      specialization:
+        selectedDoctor.specialization,
+    };
+
     try {
+      // STORE PATIENT
+      await fetch(
+        `${BASE_URL}/patients`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify(
+            patientPayload
+          ),
+        }
+      );
+
+      // STORE DOCTOR
+      await fetch(
+        `${BASE_URL}/doctors`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify(
+            doctorPayload
+          ),
+        }
+      );
+
+      // STORE APPOINTMENT
       const response = await fetch(
         `${BASE_URL}/appointments`,
         {
@@ -153,7 +224,9 @@ function App() {
               "application/json",
           },
 
-          body: JSON.stringify(payload),
+          body: JSON.stringify(
+            appointmentPayload
+          ),
         }
       );
 
@@ -164,10 +237,6 @@ function App() {
         setOutput(`❌ ${message}`);
         return;
       }
-
-      setHospitalRevenue(
-        (prev) => prev + Number(fee)
-      );
 
       setOutput(`
 ✅ APPOINTMENT BOOKED SUCCESSFULLY
@@ -195,28 +264,55 @@ Consultation Fee: ₹${fee}
     }
   };
 
-  // ───────────────── DISCHARGE ─────────────────
+  // ───────────────── DISCHARGE PATIENT ─────────────────
   const dischargePatient = async (
     appointment
   ) => {
+    // ASK HOURS
     const hours = prompt(
       "Enter admission hours:"
     );
 
     if (!hours) return;
 
+    // ASK ROOM RATE
+    const roomRate = prompt(
+      "Enter room charge per hour:"
+    );
+
+    if (!roomRate) return;
+
     const admittedHours =
       Number(hours);
 
+    const roomChargePerHour =
+      Number(roomRate);
+
+    // VALIDATION
+    if (
+      isNaN(admittedHours) ||
+      isNaN(roomChargePerHour)
+    ) {
+      setOutput(
+        "❌ Invalid input values"
+      );
+
+      return;
+    }
+
+    // CALCULATIONS
     const roomCharges =
-      admittedHours * 300;
+      admittedHours *
+      roomChargePerHour;
 
     const consultationFee =
       Number(appointment.fee);
 
     const totalBill =
-      roomCharges + consultationFee;
+      roomCharges +
+      consultationFee;
 
+    // CONFIRMATION
     const confirmDischarge =
       window.confirm(`
 PATIENT BILL
@@ -226,6 +322,10 @@ Patient: ${appointment.patientName}
 Doctor: ${appointment.doctorName}
 
 Diagnosis: ${appointment.diagnosis}
+
+Admission Hours: ${admittedHours}
+
+Room Charge Per Hour: ₹${roomChargePerHour}
 
 Consultation Fee: ₹${consultationFee}
 
@@ -256,9 +356,21 @@ Proceed with discharge?
         return;
       }
 
-      // ADD ROOM REVENUE
-      setHospitalRevenue(
-        (prev) => prev + roomCharges
+      // STORE ROOM REVENUE
+      const previousRevenue =
+        Number(
+          localStorage.getItem(
+            "roomRevenue"
+          )
+        ) || 0;
+
+      const updatedRevenue =
+        previousRevenue +
+        roomCharges;
+
+      localStorage.setItem(
+        "roomRevenue",
+        updatedRevenue
       );
 
       setOutput(`
@@ -269,6 +381,8 @@ Patient: ${appointment.patientName}
 Diagnosis: ${appointment.diagnosis}
 
 Admission Hours: ${admittedHours}
+
+Room Charge Per Hour: ₹${roomChargePerHour}
 
 Consultation Fee: ₹${consultationFee}
 
@@ -732,8 +846,6 @@ const styles = {
     width: "100%",
     borderCollapse: "collapse",
     background: "white",
-    borderRadius: "14px",
-    overflow: "hidden",
   },
 
   tableHeader: {
