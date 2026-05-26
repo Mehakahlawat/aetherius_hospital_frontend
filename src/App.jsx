@@ -194,7 +194,7 @@ Consultation Fee: ₹${fee}
       Number(hours);
 
     const roomCharges =
-      admittedHours * 500;
+      admittedHours * 300;
 
     const consultationFee =
       Number(appointment.fee);
@@ -688,7 +688,7 @@ const styles = {
   },
 
   dischargeButton: {
-    background: "#0ea5e9",
+    background: "#2178a1a1",
     color: "white",
     border: "none",
     padding: "8px 12px",
@@ -698,7 +698,7 @@ const styles = {
   },
 
   prescribeButton: {
-    background: "#7c3aed",
+    background: "#1a6a393a",
     color: "white",
     border: "none",
     padding: "8px 12px",
@@ -707,7 +707,7 @@ const styles = {
   },
 
   outputBox: {
-    background: "#0f172a",
+    background: "#c2c8d6",
     color: "white",
     padding: "20px",
     borderRadius: "18px",
